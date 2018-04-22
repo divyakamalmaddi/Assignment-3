@@ -5,6 +5,7 @@ from targetItems import *
 from pipelines import *
 import json
 from scrapy import signals
+import urlparse
 
 
 class ScrapeTarget(CrawlSpider):
@@ -20,7 +21,7 @@ class ScrapeTarget(CrawlSpider):
 		        canonicalize=False,
 		        unique=True
 		    ),
-		    follow=True,
+		    follow=False,
 		    callback="parse"
 		)
     	]
@@ -31,6 +32,12 @@ class ScrapeTarget(CrawlSpider):
 		self.injection_points[response.url] = []
 		for form in forms:
 		    formJson = {}
+		    formname = form.xpath('@action').extract()
+		    if(len(formname)>0):
+			formname = formname[0]
+		    else:
+			formname = response.url
+		    formJson['path'] = formname
 		    method = form.xpath('@method').extract()
 		    formJson['type'] = method[0] if len(method)>0 else 'GET' 
 		    #print(form.xpath('@method').extract()[0])
@@ -43,14 +50,25 @@ class ScrapeTarget(CrawlSpider):
 			formJson['params'].append(inpJson)
 		    self.injection_points[response.url].append(formJson)
 		
-		items = []
+		'''items = []
 		links = LinkExtractor(canonicalize=False, unique=True).extract_links(response)
 		for link in links:
 		    item = URLItem()
 		    item['from_url'] = response.url
 		    item['to_url'] = link.url
 		    items.append(item)
-		    yield scrapy.http.Request(url=link.url, callback=self.parse)
+		    yield scrapy.http.Request(url=link.url, callback=self.parse)'''
+		links = response.css('a::attr(href)').extract()
+		for link in links:
+			parsedUrl = urlparse.urlparse(link)
+			if parsedUrl.query != '':
+				getJson = {'type' : 'GET', 'params': [], 'path': link}
+				for key in urlparse.parse_qs(parsedUrl.query):
+					getJson['params'].append({'name':key})
+				self.injection_points[response.url].append(getJson)
+			yield scrapy.http.Request(url=response.urljoin(link), callback=self.parse)
+				
+			
 
 	@classmethod
 	def from_crawler(cls, crawler, *args, **kwargs):
@@ -63,5 +81,5 @@ class ScrapeTarget(CrawlSpider):
         	print('Opening {} spider'.format(spider.name))
 
 	def spider_closed(self, spider):
-        	with open(self.name + '_phase1.json', 'a') as fp:
+        	with open(self.name + '_phase1.json', 'w') as fp:
             		json.dump(self.injection_points, fp, sort_keys=True, indent=4)
