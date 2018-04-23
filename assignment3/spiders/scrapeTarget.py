@@ -13,34 +13,28 @@ class ScrapeTarget(CrawlSpider):
 	start_urls = [
 		'http://target.com'
 	]
+	allowed_domains =[
+		'target.com', ''
+	]
 	injection_points = {}
-
-	rules = [
-		Rule(
-		    LinkExtractor(
-		        canonicalize=False,
-		        unique=True
-		    ),
-		    follow=False,
-		    callback="parse"
-		)
-    	]
 	
 	def parse(self, response):
 		#extract forms on the page
 		forms = response.css('form')
-		self.injection_points[response.url] = []
+		parsedResponseURL = urlparse.urlparse(response.url)
+		urlKey = parsedResponseURL.scheme+"://"+ parsedResponseURL.netloc
+		if urlKey not in self.injection_points:
+			self.injection_points[urlKey] = []
 		for form in forms:
 		    formJson = {}
 		    formname = form.xpath('@action').extract()
 		    if(len(formname)>0):
 			formname = formname[0]
 		    else:
-			formname = response.url
-		    formJson['path'] = formname
+			formname = parsedResponseURL.path
+		    formJson['endpoint'] = formname
 		    method = form.xpath('@method').extract()
-		    formJson['type'] = method[0] if len(method)>0 else 'GET' 
-		    #print(form.xpath('@method').extract()[0])
+		    formJson['method'] = method[0] if len(method)>0 else 'GET'
 		    formJson['params'] = []
 		    inputs = form.css('input')
 		    for inp in inputs:
@@ -48,25 +42,20 @@ class ScrapeTarget(CrawlSpider):
 			typ = inp.xpath('@type').extract()
 			inpJson = {'name': name[0] if len(name)>0 else '', 'type': typ[0] if len(typ)>0 else 'text'}
 			formJson['params'].append(inpJson)
-		    self.injection_points[response.url].append(formJson)
+		    if formJson not in self.injection_points[urlKey]:
+		    	self.injection_points[urlKey].append(formJson)
 		
-		'''items = []
-		links = LinkExtractor(canonicalize=False, unique=True).extract_links(response)
-		for link in links:
-		    item = URLItem()
-		    item['from_url'] = response.url
-		    item['to_url'] = link.url
-		    items.append(item)
-		    yield scrapy.http.Request(url=link.url, callback=self.parse)'''
 		links = response.css('a::attr(href)').extract()
 		for link in links:
 			parsedUrl = urlparse.urlparse(link)
-			if parsedUrl.query != '':
-				getJson = {'type' : 'GET', 'params': [], 'path': link}
-				for key in urlparse.parse_qs(parsedUrl.query):
-					getJson['params'].append({'name':key})
-				self.injection_points[response.url].append(getJson)
-			yield scrapy.http.Request(url=response.urljoin(link), callback=self.parse)
+			if parsedUrl.netloc in self.allowed_domains:
+				if parsedUrl.query != '':
+					getJson = {'method' : 'GET', 'params': [], 'endpoint': urlparse.urljoin(parsedResponseURL.path,parsedUrl.path)}
+					for key in urlparse.parse_qs(parsedUrl.query):
+						getJson['params'].append({'name':key})
+					if getJson not in self.injection_points[urlKey]:
+						self.injection_points[urlKey].append(getJson)
+				yield scrapy.http.Request(url=response.urljoin(link), callback=self.parse)
 				
 			
 
