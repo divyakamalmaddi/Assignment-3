@@ -1,0 +1,2 @@
+; uname -a
+google.com; uname -a
