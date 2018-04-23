@@ -43,7 +43,16 @@ def post_request(url, injection_point, payload):
     response['result'] = r.text
     return response
     		
-
+def get_request(url,injection_point, payload):
+    paramStr = '?'
+    response = {'endpoint': injection_point['endpoint'], 'params': {}, 'method': 'GET'}
+    for param in injection_point['params']:
+        response['params'][param['name']] = payload
+        paramStr = paramStr + param['name'] + '=' + payload
+    r = requests.get(urlparse.urljoin(url, injection_point['endpoint']+paramStr))
+    response['result'] = r.text
+    return response
+    		
 def launch_attack(attack_type):
     payloads = get_payload(attack_type)
     obj = {"class" : attack_type, "results" : {}}
@@ -55,9 +64,12 @@ def launch_attack(attack_type):
         for injection_point in injection_points:
             if injection_point['method'] == 'POST':
 				for payload in payloads:
-					print payload
 					response = post_request(url, injection_point, payload)
 					obj["results"].append(response)
+            elif injection_point['method'] == 'GET':
+                for payload in payloads:
+                    response = get_request(url, injection_point, payload)
+                    obj["results"].append(response)
 	op_file = attack_type.replace(" ","")+".json"
     with open(op_file, 'w') as fp:
     	json.dump(obj, fp, sort_keys=True, indent=4)
