@@ -25,9 +25,9 @@ def is_attack_successful(attack_type, response, endpoint):
         if 'root' in response['result']:
             success = True
     elif attack_type == SQL_INJECTION:
-            success = True
+            success = False
     else:
-        success = True
+        success = False
 
     if success == True:
         logging.info('Potential {0} attack found at {1}'.format(attack_type, endpoint))
@@ -84,7 +84,8 @@ def launch_attack(attack_type):
     for url in end_points:
         injection_points = end_points[url]
         parsed = urlparse.urlparse(url)
-        obj["results"] = []
+        if url not in obj["results"]:
+	    obj["results"][url] = []
         response = {}
         
         for injection_point in injection_points:
@@ -97,11 +98,11 @@ def launch_attack(attack_type):
             
             success = is_attack_successful(attack_type, response, urlparse.urljoin(url, injection_point['endpoint']))
             response['success'] = success
-            obj["results"].append(response)
+            obj["results"][url].append(response)
     
     op_file = attack_type.replace(" ","")+".json"
     logging.info('Generating Phase 3 output file for {0} attack\n'.format(attack_type))
-    with open(op_file, 'w') as fp:
+    with open("response/"+op_file, 'w') as fp:
         json.dump(obj, fp, sort_keys=True, indent=4)
 
 def main():
