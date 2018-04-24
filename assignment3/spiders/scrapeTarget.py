@@ -73,6 +73,7 @@ class ScrapeTarget(CrawlSpider):
         	logging.info('Opening {} spider'.format(spider.name))
 
 	def spider_closed(self, spider):
-		logging.info('\n\nPhase 1: Crawling completed. Generating endpoints file\n\n --------------------- \n\n')
+		logging.info('\n\nCrawling completed. Generating endpoints file')
+		logging.info('\n\nPhase 1: Crawling completed\n\n---------------------\n\n')
         	with open(self.name + '_phase1.json', 'w') as fp:
             		json.dump(self.injection_points, fp, sort_keys=True, indent=4)

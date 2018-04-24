@@ -30,7 +30,8 @@ def is_attack_successful(attack_type, response, endpoint):
         success = False
 
     if success == True:
-        logging.info('Potential {0} attack found at {1}'.format(attack_type, endpoint))
+        logging.info('\n')
+        logging.info('!! Potential {0} attack found at {1} !!\n'.format(attack_type, endpoint))
 
     return success
 
@@ -47,8 +48,10 @@ def get_payload_file(attack_type):
 
 #return list of payloads for specified attack
 def get_payload(attack_type):
-    logging.info('Retrieving payloads for {0} attack'.format(attack_type))
+    logging.info('Starting Phase 2: Payload Generation for {0} attack'.format(attack_type))
     payload_file = get_payload_file(attack_type)
+    logging.info('Retrieving payloads from {0} file'.format(payload_file))
+    logging.info('Completed Phase 2: Payload Generation for {0} attack\n\n---------------------\n'.format(attack_type))
     if payload_file == '':
         return None
     with open('payload/'+payload_file) as f:
@@ -78,6 +81,7 @@ def get_request(attack_type, url,injection_point, payload):
             
 def launch_attack(attack_type):
     payloads = get_payload(attack_type)
+    logging.info('Starting Phase 3: Payload Injection for {0} attack\n'.format(attack_type))
     obj = {"class" : attack_type, "results" : {}}
     end_points = json.load(open('scrapeTarget_phase1.json'))
     
@@ -107,12 +111,9 @@ def launch_attack(attack_type):
 
 def main():
     logging.basicConfig(filename='logs.log', format='%(asctime)s %(message)s', level=logging.DEBUG)
-    logging.info('Starting Phase 2: Payload Generation\n')
-    logging.info('Completed Phase 2: Payload Generation\n---------------------\n')
-    logging.info('Starting Phase 3: Payload Injection\n')
     attack_type = sys.argv[1]
     launch_attack(attack_type)
-    logging.info('Completed Phase 3: Payload Injection\n---------------------\n')
+    logging.info('Completed Phase 3: Payload Injection for {0}\n\n---------------------\n'.format(attack_type))
 
 if __name__ == "__main__":
     main()
