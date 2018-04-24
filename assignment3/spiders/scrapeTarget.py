@@ -6,6 +6,7 @@ from pipelines import *
 import json
 from scrapy import signals
 import urlparse
+import logging
 
 
 class ScrapeTarget(CrawlSpider):
@@ -17,6 +18,8 @@ class ScrapeTarget(CrawlSpider):
 		'target.com', ''
 	]
 	injection_points = {}
+	logging.basicConfig(filename='logs.log', format='%(asctime)s %(message)s', level=logging.DEBUG)
+	logging.info('Starting Phase 1: Crawling\n')
 	
 	def parse(self, response):
 		#extract forms on the page
@@ -67,8 +70,9 @@ class ScrapeTarget(CrawlSpider):
 		return spider
 
 	def spider_opened(self, spider):
-        	print('Opening {} spider'.format(spider.name))
+        	logging.info('Opening {} spider'.format(spider.name))
 
 	def spider_closed(self, spider):
+		logging.info('\n\nPhase 1: Crawling completed. Generating endpoints file\n\n --------------------- \n\n')
         	with open(self.name + '_phase1.json', 'w') as fp:
             		json.dump(self.injection_points, fp, sort_keys=True, indent=4)
